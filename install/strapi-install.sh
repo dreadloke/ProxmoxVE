@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 
-# Copyright (c) 2021-2025 communtiy-scripts ORG
+# Description: Strapi CMS Installation Script
+# Dependencies: curl, nginx, nodejs, npm, postgresql
+# Version: 1.0.0
 # Author: MickLesk (Canbiz)
-# License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
+# License: MIT
 # Source: https://strapi.io/
 
 source /dev/stdin <<< "$FUNCTIONS_FILE_PATH"
@@ -26,13 +28,70 @@ $STD apt-get install -y \
   libpq-dev
 msg_ok "Installed Dependencies"
 
+# Add error handling function
+function error_handler() {
+    local line_number=$1
+    msg_error "An error occurred in line ${line_number}"
+    cleanup
+}
+
+# Add cleanup function
+function cleanup() {
+    msg_info "Performing cleanup..."
+    apt-get autoremove -y >/dev/null 2>&1
+    apt-get autoclean -y >/dev/null 2>&1
+}
+
+# Add trap for error handling
+trap 'error_handler $LINENO' ERR
+
+# Add function for database setup
+function setup_database() {
+    local db_name=$1
+    local db_user=$2
+    local db_pass=$3
+    
+    msg_info "Setting up PostgreSQL Database"
+    $STD sudo -u postgres psql -c "CREATE DATABASE $db_name;"
+    $STD sudo -u postgres psql -c "CREATE USER $db_user WITH PASSWORD '$db_pass';"
+    $STD sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $db_name TO $db_user;"
+}
+
+# Add function for Strapi configuration
+function configure_strapi() {
+    msg_info "Configuring Strapi Environment"
+    local db_name=$1
+    local db_user=$2
+    local db_pass=$3
+    
+    # Generate secure random keys
+    local app_keys=$(openssl rand -base64 32)
+    local api_token_salt=$(openssl rand -base64 32)
+    local admin_jwt_secret=$(openssl rand -base64 32)
+    
+    # Create environment file with proper configurations
+    cat <<EOF > /opt/strapi/.env
+HOST=0.0.0.0
+PORT=1337
+APP_KEYS=$app_keys
+API_TOKEN_SALT=$api_token_salt
+ADMIN_JWT_SECRET=$admin_jwt_secret
+TRANSFER_TOKEN_SALT=$(openssl rand -base64 32)
+JWT_SECRET=$(openssl rand -base64 32)
+DATABASE_CLIENT=postgres
+DATABASE_HOST=127.0.0.1
+DATABASE_PORT=5432
+DATABASE_NAME=$db_name
+DATABASE_USERNAME=$db_user
+DATABASE_PASSWORD=$db_pass
+EOF
+}
+
 msg_info "Setting up Database"
 DB_NAME=strapi_db
 DB_USER=strapi
 DB_PASS=$(openssl rand -base64 18 | tr -dc 'a-zA-Z0-9' | head -c13)
-$STD sudo -u postgres psql -c "CREATE DATABASE $DB_NAME;"
-$STD sudo -u postgres psql -c "CREATE USER $DB_USER WITH PASSWORD '$DB_PASS';"
-$STD sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;"
+setup_database $DB_NAME $DB_USER $DB_PASS
 {
     echo "Strapi Credentials"
     echo "Database User: $DB_USER"
@@ -48,38 +107,7 @@ $STD npx create-strapi-app@latest . --quickstart --no-run
 msg_ok "Installed Strapi"
 
 msg_info "Configuring Strapi"
-cat <<EOF > /opt/strapi/config/database.js
-module.exports = ({ env }) => ({
-  connection: {
-    client: 'postgres',
-    connection: {
-      host: env('DATABASE_HOST', '127.0.0.1'),
-      port: env.int('DATABASE_PORT', 5432),
-      database: env('DATABASE_NAME', '$DB_NAME'),
-      user: env('DATABASE_USERNAME', '$DB_USER'),
-      password: env('DATABASE_PASSWORD', '$DB_PASS'),
-      ssl: env.bool('DATABASE_SSL', false),
-    },
-    debug: false,
-  },
-});
-EOF
-
-cat <<EOF > /opt/strapi/.env
-HOST=0.0.0.0
-PORT=1337
-APP_KEYS=$(openssl rand -base64 32)
-API_TOKEN_SALT=$(openssl rand -base64 32)
-ADMIN_JWT_SECRET=$(openssl rand -base64 32)
-TRANSFER_TOKEN_SALT=$(openssl rand -base64 32)
-JWT_SECRET=$(openssl rand -base64 32)
-DATABASE_CLIENT=postgres
-DATABASE_HOST=127.0.0.1
-DATABASE_PORT=5432
-DATABASE_NAME=$DB_NAME
-DATABASE_USERNAME=$DB_USER
-DATABASE_PASSWORD=$DB_PASS
-EOF
+configure_strapi $DB_NAME $DB_USER $DB_PASS
 msg_ok "Configured Strapi"
 
 msg_info "Setup Services"
@@ -132,6 +160,5 @@ motd_ssh
 customize
 
 msg_info "Cleaning up"
-$STD apt-get autoremove
-$STD apt-get autoclean
+cleanup
 msg_ok "Cleaned" 

@@ -1,0 +1,88 @@
+{
+  "app": {
+    "name": "Strapi",
+    "website": "https://strapi.io",
+    "description": "Strapi is the leading open-source headless CMS. It's 100% JavaScript/TypeScript, fully customizable and developer-first.",
+    "categories": ["CMS", "API", "Headless"],
+    "tags": ["cms", "api", "headless", "nodejs", "postgresql"],
+    "license": "MIT",
+    "repository": "https://github.com/strapi/strapi"
+  },
+  "container": {
+    "image": "debian",
+    "version": "12",
+    "arch": ["amd64", "arm64"],
+    "requirements": {
+      "cpu": 2,
+      "memory": 4096,
+      "disk": 20
+    },
+    "ports": [
+      {
+        "port": 1337,
+        "protocol": "tcp",
+        "description": "Strapi application"
+      },
+      {
+        "port": 80,
+        "protocol": "tcp",
+        "description": "Nginx reverse proxy"
+      }
+    ]
+  },
+  "dependencies": {
+    "required": [
+      "curl",
+      "sudo",
+      "mc",
+      "nginx",
+      "nodejs",
+      "npm",
+      "postgresql",
+      "postgresql-contrib",
+      "libpq-dev"
+    ],
+    "optional": []
+  },
+  "maintenance": {
+    "backup": {
+      "directories": [
+        "/opt/strapi"
+      ],
+      "database": true,
+      "type": "postgresql"
+    },
+    "update": {
+      "method": "manual",
+      "description": "Updates should be performed through the Strapi admin interface or using npm/yarn"
+    }
+  },
+  "networking": {
+    "requires_internet": true,
+    "requires_port_forwarding": true,
+    "recommended_firewall_rules": [
+      {
+        "port": 80,
+        "protocol": "tcp",
+        "direction": "in",
+        "description": "HTTP access"
+      },
+      {
+        "port": 1337,
+        "protocol": "tcp",
+        "direction": "in",
+        "description": "Direct Strapi access (optional)"
+      }
+    ]
+  },
+  "documentation": {
+    "official_docs": "https://docs.strapi.io",
+    "quick_start": "http://${IP}/admin/",
+    "credentials_file": "~/strapi.creds"
+  },
+  "support": {
+    "community": "https://forum.strapi.io",
+    "issues": "https://github.com/strapi/strapi/issues",
+    "discord": "https://discord.strapi.io"
+  }
+}

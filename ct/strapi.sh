@@ -5,12 +5,17 @@ source <(curl -s https://raw.githubusercontent.com/dreadloke/ProxmoxVE/refs/head
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
 # Source: https://strapi.io/
 
+# Add more descriptive header comments
+# Description: Strapi CMS Container Setup Script
+# Dependencies: curl, build.func
+# Version: 1.0.0
+
 ## App Default Values
 APP="Strapi"
 var_tags="cms;api;headless"
-var_disk="10"
+var_disk="20"  # Increased from 10 to accommodate growth
 var_cpu="2"
-var_ram="2048"
+var_ram="4096"  # Increased from 2048 for better performance
 var_os="debian"
 var_version="12"
 
@@ -19,16 +24,35 @@ variables
 color
 catch_errors
 
+# Add input validation
+function validate_inputs() {
+    if [[ $var_ram -lt 2048 ]]; then
+        msg_error "Strapi requires at least 2GB RAM to run properly"
+        exit 1
+    fi
+    if [[ $var_disk -lt 10 ]]; then
+        msg_error "Minimum disk size of 10GB required"
+        exit 1
+    fi
+}
+
 function update_script() {
     header_info
     check_container_storage
     check_container_resources
+    
+    # Add error trapping
+    trap 'error_handler $LINENO' ERR
+    
     if [[ ! -d /opt/strapi ]]; then
         msg_error "No ${APP} Installation Found!"
-        exit
+        exit 1
     fi
-    msg_error "Strapi should be updated via the user interface."
-    exit
+    
+    # Add more detailed error message
+    msg_error "Strapi updates should be managed through the admin interface or using npm/yarn."
+    msg_info "Please visit http://${IP}/admin/ to manage your Strapi instance."
+    exit 0
 }
 
 start
