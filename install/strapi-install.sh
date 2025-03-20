@@ -103,6 +103,7 @@ msg_ok "Set up Database"
 msg_info "Installing Strapi (Patience)"
 mkdir -p /opt/strapi || exit
 cd /opt/strapi || exit
+$STD npm install -g create-strapi-app@latest
 $STD npx create-strapi-app@latest . --quickstart --no-run
 msg_ok "Installed Strapi"
 
