@@ -25,7 +25,8 @@ $STD apt-get install -y \
   npm \
   postgresql \
   postgresql-contrib \
-  libpq-dev
+  libpq-dev \
+  git
 msg_ok "Installed Dependencies"
 
 # Add error handling function
@@ -106,58 +107,27 @@ msg_info "Installing Strapi (Patience)"
 mkdir -p /opt/strapi || exit
 cd /opt/strapi || exit
 
-# Use Node.js directly to install Strapi
-# Install yarn using npm instead of apt-get to get the correct package
-$STD npm install -g yarn
-if [ $? -ne 0 ]; then
-    msg_error "Failed to install yarn. Trying alternative method..."
-    $STD curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /usr/share/keyrings/yarn-archive-keyring.gpg >/dev/null
-    $STD echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
-    $STD apt-get update && apt-get install -y yarn
-fi
+# Update npm and clear cache 
+$STD npm install -g npm@latest
+$STD npm cache clean --force
 
-# Create directory structure
+# Create a new Strapi project using npx and a specific version to avoid prompts
+export CI=true
+$STD npm install -g create-strapi-app@4.13.7
+$STD create-strapi-app@4.13.7 . \
+  --dbclient=postgres \
+  --dbhost=127.0.0.1 \
+  --dbport=5432 \
+  --dbname=$DB_NAME \
+  --dbusername=$DB_USER \
+  --dbpassword=$DB_PASS \
+  --dbssl=false \
+  --no-run \
+  --quickstart \
+  --no-interactive
+
+# Create the config/database.js file
 mkdir -p /opt/strapi/config
-
-# Create a package.json file
-cat > /opt/strapi/package.json << EOF
-{
-  "name": "strapi-app",
-  "private": true,
-  "version": "0.1.0",
-  "description": "Strapi application",
-  "scripts": {
-    "develop": "strapi develop",
-    "start": "strapi start",
-    "build": "strapi build",
-    "strapi": "strapi"
-  },
-  "dependencies": {
-    "@strapi/strapi": "latest",
-    "@strapi/plugin-users-permissions": "latest",
-    "@strapi/plugin-i18n": "latest",
-    "pg": "latest"
-  },
-  "engines": {
-    "node": ">=16.0.0",
-    "npm": ">=6.0.0"
-  },
-  "strapi": {
-    "uuid": "$(openssl rand -hex 16)"
-  }
-}
-EOF
-
-# Install dependencies - run in the correct directory with explicit path
-cd /opt/strapi || { msg_error "Failed to change to /opt/strapi directory"; exit 1; }
-msg_info "Installing Strapi dependencies with yarn (this may take a while)..."
-$STD yarn install --non-interactive --network-timeout 600000
-if [ $? -ne 0 ]; then
-    msg_error "Yarn install failed. Trying with npm instead..."
-    $STD npm install --no-fund --no-audit
-fi
-
-# Initialize Strapi with database connection
 cat > /opt/strapi/config/database.js << EOF
 module.exports = ({ env }) => ({
   connection: {
@@ -194,19 +164,14 @@ DATABASE_SSL=false
 NODE_ENV=production
 EOF
 
-# Build Strapi for production use
-cd /opt/strapi || { msg_error "Failed to change to /opt/strapi directory"; exit 1; }
-msg_info "Building Strapi (this may take a while)..."
-$STD yarn build
-if [ $? -ne 0 ]; then
-    msg_error "Yarn build failed. Trying with npm instead..."
-    $STD npm run build
-fi
+# Build Strapi
+cd /opt/strapi
+$STD NODE_ENV=production npm run build
 
 msg_ok "Installed Strapi"
 
+# No need to configure separately since we already did
 msg_info "Configuring Strapi"
-configure_strapi $DB_NAME $DB_USER $DB_PASS
 msg_ok "Configured Strapi"
 
 msg_info "Setup Services"
