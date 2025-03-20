@@ -106,12 +106,21 @@ msg_info "Installing Strapi (Patience)"
 mkdir -p /opt/strapi || exit
 cd /opt/strapi || exit
 
-# Use a direct approach with yarn instead of npm/npx to avoid prompts
-$STD apt-get update
-$STD apt-get install -y yarn
+# Use Node.js directly to install Strapi
+# Install yarn using npm instead of apt-get to get the correct package
+$STD npm install -g yarn
+if [ $? -ne 0 ]; then
+    msg_error "Failed to install yarn. Trying alternative method..."
+    $STD curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | gpg --dearmor | tee /usr/share/keyrings/yarn-archive-keyring.gpg >/dev/null
+    $STD echo "deb [signed-by=/usr/share/keyrings/yarn-archive-keyring.gpg] https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list
+    $STD apt-get update && apt-get install -y yarn
+fi
+
+# Create directory structure
+mkdir -p /opt/strapi/config
 
 # Create a package.json file
-cat > package.json << EOF
+cat > /opt/strapi/package.json << EOF
 {
   "name": "strapi-app",
   "private": true,
@@ -139,12 +148,17 @@ cat > package.json << EOF
 }
 EOF
 
-# Install dependencies
-$STD yarn install
+# Install dependencies - run in the correct directory with explicit path
+cd /opt/strapi || { msg_error "Failed to change to /opt/strapi directory"; exit 1; }
+msg_info "Installing Strapi dependencies with yarn (this may take a while)..."
+$STD yarn install --non-interactive --network-timeout 600000
+if [ $? -ne 0 ]; then
+    msg_error "Yarn install failed. Trying with npm instead..."
+    $STD npm install --no-fund --no-audit
+fi
 
-# Create config directory and initialize Strapi with database connection
-mkdir -p config
-cat > config/database.js << EOF
+# Initialize Strapi with database connection
+cat > /opt/strapi/config/database.js << EOF
 module.exports = ({ env }) => ({
   connection: {
     client: 'postgres',
@@ -162,7 +176,7 @@ module.exports = ({ env }) => ({
 EOF
 
 # Create .env file with proper configuration
-cat > .env << EOF
+cat > /opt/strapi/.env << EOF
 HOST=0.0.0.0
 PORT=1337
 APP_KEYS=$(openssl rand -base64 32)
@@ -181,7 +195,13 @@ NODE_ENV=production
 EOF
 
 # Build Strapi for production use
+cd /opt/strapi || { msg_error "Failed to change to /opt/strapi directory"; exit 1; }
+msg_info "Building Strapi (this may take a while)..."
 $STD yarn build
+if [ $? -ne 0 ]; then
+    msg_error "Yarn build failed. Trying with npm instead..."
+    $STD npm run build
+fi
 
 msg_ok "Installed Strapi"
 
