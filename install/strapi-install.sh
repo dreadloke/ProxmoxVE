@@ -84,6 +84,8 @@ DATABASE_PORT=5432
 DATABASE_NAME=$db_name
 DATABASE_USERNAME=$db_user
 DATABASE_PASSWORD=$db_pass
+DATABASE_SSL=false
+NODE_ENV=production
 EOF
 }
 
@@ -103,8 +105,84 @@ msg_ok "Set up Database"
 msg_info "Installing Strapi (Patience)"
 mkdir -p /opt/strapi || exit
 cd /opt/strapi || exit
-$STD npm install -g create-strapi-app@latest
-$STD npx create-strapi-app@latest . --quickstart --no-run
+
+# Use a direct approach with yarn instead of npm/npx to avoid prompts
+$STD apt-get update
+$STD apt-get install -y yarn
+
+# Create a package.json file
+cat > package.json << EOF
+{
+  "name": "strapi-app",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Strapi application",
+  "scripts": {
+    "develop": "strapi develop",
+    "start": "strapi start",
+    "build": "strapi build",
+    "strapi": "strapi"
+  },
+  "dependencies": {
+    "@strapi/strapi": "latest",
+    "@strapi/plugin-users-permissions": "latest",
+    "@strapi/plugin-i18n": "latest",
+    "pg": "latest"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=6.0.0"
+  },
+  "strapi": {
+    "uuid": "$(openssl rand -hex 16)"
+  }
+}
+EOF
+
+# Install dependencies
+$STD yarn install
+
+# Create config directory and initialize Strapi with database connection
+mkdir -p config
+cat > config/database.js << EOF
+module.exports = ({ env }) => ({
+  connection: {
+    client: 'postgres',
+    connection: {
+      host: env('DATABASE_HOST', '127.0.0.1'),
+      port: env.int('DATABASE_PORT', 5432),
+      database: env('DATABASE_NAME', '$DB_NAME'),
+      user: env('DATABASE_USERNAME', '$DB_USER'),
+      password: env('DATABASE_PASSWORD', '$DB_PASS'),
+      ssl: env.bool('DATABASE_SSL', false),
+    },
+    debug: false,
+  },
+});
+EOF
+
+# Create .env file with proper configuration
+cat > .env << EOF
+HOST=0.0.0.0
+PORT=1337
+APP_KEYS=$(openssl rand -base64 32)
+API_TOKEN_SALT=$(openssl rand -base64 32)
+ADMIN_JWT_SECRET=$(openssl rand -base64 32)
+TRANSFER_TOKEN_SALT=$(openssl rand -base64 32)
+JWT_SECRET=$(openssl rand -base64 32)
+DATABASE_CLIENT=postgres
+DATABASE_HOST=127.0.0.1
+DATABASE_PORT=5432
+DATABASE_NAME=$DB_NAME
+DATABASE_USERNAME=$DB_USER
+DATABASE_PASSWORD=$DB_PASS
+DATABASE_SSL=false
+NODE_ENV=production
+EOF
+
+# Build Strapi for production use
+$STD yarn build
+
 msg_ok "Installed Strapi"
 
 msg_info "Configuring Strapi"
