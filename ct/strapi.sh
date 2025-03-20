@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source <(curl -s https://raw.githubusercontent.com/dreadloke/ProxmoxVE/refs/heads/feature-strapi-hs/misc/build.func)
+source <(curl -s https://raw.githubusercontent.com/dreadloke/ProxmoxVE/refs/heads/feature-strapi-hs-test/misc/build.func)
 # Copyright (c) 2021-2025 community-scripts ORG
 # Author: dreadloke (dreadloke)
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
