@@ -1097,9 +1097,11 @@ build_container() {
   TEMP_DIR=$(mktemp -d)
   pushd $TEMP_DIR >/dev/null
   if [ "$var_os" == "alpine" ]; then
-    export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/alpine-install.func)"
+    # Point to user's branch for testing
+    export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/dreadloke/ProxmoxVE/feature-phantombot-script/misc/alpine-install.func)"
   else
-    export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/misc/install.func)"
+    # Point to user's branch for testing
+    export FUNCTIONS_FILE_PATH="$(curl -fsSL https://raw.githubusercontent.com/dreadloke/ProxmoxVE/feature-phantombot-script/misc/install.func)"
   fi
   export RANDOM_UUID="$RANDOM_UUID"
   export CACHER="$APT_CACHER"
@@ -1131,7 +1133,8 @@ build_container() {
     $PW
   "
   # This executes create_lxc.sh and creates the container and .conf file
-  bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/ct/create_lxc.sh)" || exit $?
+  # Point to user's branch for testing (Assuming create_lxc.sh doesn't need branch-specific changes, but using branch for consistency)
+  bash -c "$(curl -fsSL https://raw.githubusercontent.com/dreadloke/ProxmoxVE/feature-phantombot-script/ct/create_lxc.sh)" || exit $?
 
   LXC_CONFIG=/etc/pve/lxc/${CTID}.conf
   if [ "$CT_TYPE" == "0" ]; then
@@ -1193,7 +1196,8 @@ http://dl-cdn.alpinelinux.org/alpine/latest-stable/community
 EOF'
     pct exec "$CTID" -- ash -c "apk add bash >/dev/null"
   fi
-  lxc-attach -n "$CTID" -- bash -c "$(curl -fsSL https://raw.githubusercontent.com/community-scripts/ProxmoxVE/main/install/$var_install.sh)" || exit $?
+  # Point to user's branch for testing
+  lxc-attach -n "$CTID" -- bash -c "$(curl -fsSL https://raw.githubusercontent.com/dreadloke/ProxmoxVE/feature-phantombot-script/install/$var_install.sh)" || exit $?
 
 }
 

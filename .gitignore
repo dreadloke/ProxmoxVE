@@ -74,3 +74,9 @@ json/.vscode/
 # Ignore repository metadata or Git itself
 .git/
 .gitignore
+
+# Project-specific metadata (backlog, design docs, etc.)
+.project/
+
+# Cursor IDE metadata
+.cursor/
